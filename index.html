@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Map Proof of Concept</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="js/quadtree.js"></script>
+    <script src="js/rhill-voronoi-core.js"></script>
+    <script src="js/mappoc.js"></script>
+  </head>
+  <body onload="MapProc.init();" onmousemove="MapProc.cellUnderMouse(event);">
+      <div id="voronoiCellId"></div>
+    	<canvas width="800" height="600" id="voronoiCanvas"></canvas>
+  </body>
+</html>
