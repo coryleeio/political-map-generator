@@ -14,11 +14,12 @@ var MapProc = {
     plateRootIds: [],
     sites: [],
     numberOfIterations: 2,
+    showPlates: true,
     treemap: null,
     voronoiSiteColor: '#0000ff',
     voronoiEdgeColor: '#333',
     voronoiNotHoverColor:'#ffffff',
-    voronoiHoverColor: '#ff0000',
+    voronoiHoverColor: '#f00000',
     voronoiEdgeRecolor: '#444',
 
     init: function() {
@@ -29,13 +30,21 @@ var MapProc = {
         }
         this.treemap = this.buildTreemap();
         this.plateRootIds = this.selectPlateStartingCellIds();
-    },
+        for(i in this.plateRootIds)
+        {   
+            if(this.showPlates)
+            {
+                this.renderCell(this.plateRootIds[i], '#ff0000',this.voronoiEdgeColor);
+            }
+        }
+
+        this.render();
+     },
 
     compute: function(sites) {
         this.sites = sites;
         this.voronoi.recycle(this.diagram);
         this.diagram = this.voronoi.compute(sites, this.bbox);
-        this.render();
         this.treemap = this.buildTreemap();
     },
 
@@ -294,32 +303,32 @@ var MapProc = {
         drawingContext.stokeStyle = this.voronoiEdgeColor;
         drawingContext.stroke();
         // voronoi
-        if (!this.diagram) {
-            return;
-        }
-        // edges
-        drawingContext.beginPath();
-        drawingContext.strokeStyle = this.voronoiEdgeColor;
-        var edges = this.diagram.edges,
-            iEdge = edges.length,
-            edge, v;
-        while (iEdge--) {
-            edge = edges[iEdge];
-            v = edge.va;
-            drawingContext.moveTo(v.x, v.y);
-            v = edge.vb;
-            drawingContext.lineTo(v.x, v.y);
-        }
-        drawingContext.stroke();
-        // sites
-        drawingContext.beginPath();
-        drawingContext.fillStyle = this.voronoiSiteColor;
-        var sites = this.sites,
-            iSite = sites.length;
-        while (iSite--) {
-            v = sites[iSite];
-            drawingContext.rect(v.x - 2 / 3, v.y - 2 / 3, 2, 2);
-        }
-        drawingContext.fill();
+    //     if (!this.diagram) {
+    //         return;
+    //     }
+    //     // edges
+    //     drawingContext.beginPath();
+    //     drawingContext.strokeStyle = this.voronoiEdgeColor;
+    //     var edges = this.diagram.edges,
+    //         iEdge = edges.length,
+    //         edge, v;
+    //     while (iEdge--) {
+    //         edge = edges[iEdge];
+    //         v = edge.va;
+    //         drawingContext.moveTo(v.x, v.y);
+    //         v = edge.vb;
+    //         drawingContext.lineTo(v.x, v.y);
+    //     }
+    //     drawingContext.stroke();
+    //     // sites
+    //     drawingContext.beginPath();
+    //     drawingContext.fillStyle = this.voronoiSiteColor;
+    //     var sites = this.sites,
+    //         iSite = sites.length;
+    //     while (iSite--) {
+    //         v = sites[iSite];
+    //         drawingContext.rect(v.x - 2 / 3, v.y - 2 / 3, 2, 2);
+    //     }
+    //     drawingContext.fill();
     }
 };
