@@ -8,7 +8,7 @@
     <script src="js/rhill-voronoi-core.js"></script>
     <script src="js/mappoc.js"></script>
   </head>
-  <body onload="MapProc.init();" onmousemove="MapProc.cellUnderMouse(event);">
+  <body onload="MapProc.init();" onmousedown="MapProc.clickMouse()" onmouseup="MapProc.unClickMouse()" onmousemove="MapProc.cellUnderMouse(event);">
       <div id="voronoiCellId"></div>
     	<canvas width="800" height="600" id="voronoiCanvas"></canvas>
   </body>

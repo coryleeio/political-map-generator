@@ -21,6 +21,7 @@ var MapProc = {
     voronoiNotHoverColor:'#ffffff',
     voronoiHoverColor: '#f00000',
     voronoiEdgeRecolor: '#444',
+    mouseButtonPressed: false,
 
     init: function() {
         this.canvas = document.getElementById('voronoiCanvas');
@@ -37,9 +38,16 @@ var MapProc = {
                 this.renderCell(this.plateRootIds[i], '#ff0000',this.voronoiEdgeColor);
             }
         }
-
         this.render();
-     },
+    },
+
+    clickMouse: function() {
+        this.mouseButtonPressed = true;
+    },
+
+    unClickMouse: function() {
+        this.mouseButtonPressed = false;
+    },
 
     compute: function(sites) {
         this.sites = sites;
@@ -208,6 +216,8 @@ var MapProc = {
         if (!ev) {
             ev = window.event;
         }
+
+        console.log(ev);
         if (ev.pageX || ev.pageY) {
             x = ev.pageX;
             y = ev.pageY;
@@ -221,15 +231,19 @@ var MapProc = {
         x -= canvas.offsetLeft;
         y -= canvas.offsetTop;
         cellid = this.cellIdFromPoint(x, y);
-        if (this.lastCellId !== cellid) {
-            if (this.lastCellId !== undefined) {
-                this.renderCell(this.lastCellId, this.voronoiNotHoverColor, this.voronoiEdgeRecolor);
+        if(this.mouseButtonPressed)
+        {
+            if (this.lastCellId !== cellid) {
+                if (this.lastCellId !== undefined) {
+                    this.renderCell(this.lastCellId, this.voronoiNotHoverColor, this.voronoiEdgeRecolor);
+                }
+                if (cellid !== undefined) {
+                    this.renderCell(cellid, this.voronoiHoverColor, this.voronoiEdgeColor);
+                }
+                this.lastCellId = cellid;
             }
-            if (cellid !== undefined) {
-                this.renderCell(cellid, this.voronoiHoverColor, this.voronoiEdgeColor);
-            }
-            this.lastCellId = cellid;
         }
+
         document.getElementById('voronoiCellId').innerHTML = "(" + x + "," + y + ") = " + cellid;
     },
 
