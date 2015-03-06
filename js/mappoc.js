@@ -16,12 +16,7 @@ var MapProc = {
     numberOfIterations: 2,
     showPlates: true,
     treemap: null,
-    voronoiSiteColor: '#0000ff',
-    voronoiEdgeColor: '#333',
-    voronoiNotHoverColor:'#ffffff',
-    voronoiHoverColor: '#f00000',
-    voronoiEdgeRecolor: '#444',
-    mouseButtonPressed: false,
+    hoverColor: '#f00000',
 
     init: function() {
         this.canvas = document.getElementById('voronoiCanvas');
@@ -30,23 +25,43 @@ var MapProc = {
             this.relaxSites();
         }
         this.treemap = this.buildTreemap();
-        this.plateRootIds = this.selectPlateStartingCellIds();
-        for(i in this.plateRootIds)
-        {   
-            if(this.showPlates)
-            {
-                this.renderCell(this.plateRootIds[i], '#ff0000',this.voronoiEdgeColor);
-            }
+        this.assignPlates();
+        
+        // Toggle goes here.
+        // this.renderVoronoiView();
+        this.renderPlateView();
+    },
+
+    renderVoronoiView: function() {
+        this.renderMapBorder();
+        Voronoi.prototype.Cell.prototype.cellColor='#ffffff';
+        Voronoi.prototype.Cell.prototype.edgeColor='#333';
+        Voronoi.prototype.Cell.prototype.siteColor='#ff0000';
+        this.renderAllCells();
+    },
+
+    renderPlateView: function() {
+        this.renderMapBorder();
+        Voronoi.prototype.Cell.prototype.cellColor='#ffffff';
+        Voronoi.prototype.Cell.prototype.edgeColor='#333';
+        Voronoi.prototype.Cell.prototype.siteColor='#ff0000';
+
+        for(var i=0; i<this.numberOfPlates; i++) {
+             var cellId = this.plateRootIds[i];
+             var cell = this.diagram.cells[cellId];
+             cell.cellColor='#fff000';
         }
-        this.render();
+        this.renderAllCells();
     },
 
-    clickMouse: function() {
-        this.mouseButtonPressed = true;
+    renderAllCells: function() {
+        for (var i =0; i<this.numberOfNodes; i++) {
+            this.renderCell(i);
+        }
     },
 
-    unClickMouse: function() {
-        this.mouseButtonPressed = false;
+    assignPlates: function() {
+        this.plateRootIds = this.selectPlateStartingCellIds();
     },
 
     compute: function(sites) {
@@ -217,7 +232,6 @@ var MapProc = {
             ev = window.event;
         }
 
-        console.log(ev);
         if (ev.pageX || ev.pageY) {
             x = ev.pageX;
             y = ev.pageY;
@@ -231,17 +245,17 @@ var MapProc = {
         x -= canvas.offsetLeft;
         y -= canvas.offsetTop;
         cellid = this.cellIdFromPoint(x, y);
-        if(this.mouseButtonPressed)
-        {
-            if (this.lastCellId !== cellid) {
-                if (this.lastCellId !== undefined) {
-                    this.renderCell(this.lastCellId, this.voronoiNotHoverColor, this.voronoiEdgeRecolor);
-                }
-                if (cellid !== undefined) {
-                    this.renderCell(cellid, this.voronoiHoverColor, this.voronoiEdgeColor);
-                }
-                this.lastCellId = cellid;
+
+        if (this.lastCellId !== cellid) {
+            if (this.lastCellId !== undefined) {
+                var lastCell = this.diagram.cells[this.lastCellId];
+                this.renderCell(this.lastCellId);
             }
+            if (cellid !== undefined) {
+                var cell = this.diagram.cells[cellid];
+                this.renderCellWithColor(cellid, this.hoverColor, cell.edgeColor, cell.siteColor);
+            }
+            this.lastCellId = cellid;
         }
 
         document.getElementById('voronoiCellId').innerHTML = "(" + x + "," + y + ") = " + cellid;
@@ -271,7 +285,21 @@ var MapProc = {
         return undefined;
     },
 
-    renderCell: function(id, fillStyle, strokeStyle) {
+    renderCell: function(id) {
+        if (id === undefined) {
+            return;
+        }
+        if (!this.diagram) {
+            return;
+        }
+        var cell = this.diagram.cells[id];
+        if (!cell) {
+            return;
+        }
+        this.renderCellWithColor(id, cell.cellColor, cell.edgeColor, cell.siteColor);
+    },
+
+    renderCellWithColor: function(id, cellColor, edgeColor, siteColor) {
         if (id === undefined) {
             return;
         }
@@ -294,55 +322,27 @@ var MapProc = {
             v = halfedges[iHalfedge].getEndpoint();
             drawingContext.lineTo(v.x, v.y);
         }
-        drawingContext.fillStyle = fillStyle;
-        drawingContext.strokeStyle = strokeStyle;
+        drawingContext.fillStyle = cellColor;
+        drawingContext.strokeStyle = edgeColor;
         drawingContext.fill();
         drawingContext.stroke();
         // site
         v = cell.site;
-        drawingContext.fillStyle = this.voronoiSiteColor;
+        drawingContext.fillStyle = siteColor;
         drawingContext.beginPath();
         drawingContext.rect(v.x - 2 / 3, v.y - 2 / 3, 2, 2);
         drawingContext.fill();
     },
 
-    render: function() {
+    renderMapBorder: function() {
         var drawingContext = this.canvas.getContext('2d');
         // background
         drawingContext.globalAlpha = 1;
         drawingContext.beginPath();
         drawingContext.rect(0, 0, this.canvas.width, this.canvas.height);
-        drawingContext.fillStyle = this.voronoiNotHoverColor;
+        drawingContext.fillStyle = this.voronoiCellColor;
         drawingContext.fill();
         drawingContext.stokeStyle = this.voronoiEdgeColor;
         drawingContext.stroke();
-        // voronoi
-    //     if (!this.diagram) {
-    //         return;
-    //     }
-    //     // edges
-    //     drawingContext.beginPath();
-    //     drawingContext.strokeStyle = this.voronoiEdgeColor;
-    //     var edges = this.diagram.edges,
-    //         iEdge = edges.length,
-    //         edge, v;
-    //     while (iEdge--) {
-    //         edge = edges[iEdge];
-    //         v = edge.va;
-    //         drawingContext.moveTo(v.x, v.y);
-    //         v = edge.vb;
-    //         drawingContext.lineTo(v.x, v.y);
-    //     }
-    //     drawingContext.stroke();
-    //     // sites
-    //     drawingContext.beginPath();
-    //     drawingContext.fillStyle = this.voronoiSiteColor;
-    //     var sites = this.sites,
-    //         iSite = sites.length;
-    //     while (iSite--) {
-    //         v = sites[iSite];
-    //         drawingContext.rect(v.x - 2 / 3, v.y - 2 / 3, 2, 2);
-    //     }
-    //     drawingContext.fill();
     }
 };
