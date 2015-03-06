@@ -62,6 +62,28 @@ var MapProc = {
 
     assignPlates: function() {
         this.plateRootIds = this.selectPlateStartingCellIds();
+        for(var plateNumber=0; plateNumber<this.plateRootIds.length; plateNumber++) {
+            var rootId = this.plateRootIds[plateNumber];
+            var cell = this.diagram.cells[rootId];
+            var halfEdges = cell.halfedges;
+            var adjacents = [];
+            for(var k=0; k < halfEdges.length; k++) {
+                var lSite = halfEdges[k].edge.lSite;
+                var rSite = halfEdges[k].edge.rSite;
+                if(lSite != null && lSite.voronoiId != rootId) {
+                    console.log("hit1");
+                    adjacents.push(lSite);
+                }
+                if(rSite != null && rSite.voronoiId != rootId) {
+                    console.log("hit2");
+                    adjacents.push(rSite);
+                }
+            }
+            console.log("Adjacents for: " + rootId);
+            for(var i=0; i < adjacents.length; i++) {
+                console.log(adjacents[i].voronoiId);
+            }
+        }
     },
 
     compute: function(sites) {
