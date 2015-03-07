@@ -5,14 +5,20 @@ var MapProc = {
     canvas: null,
     numberOfSites: 1000,
     cellsForPlate: [],
+    plateIsWater: {},
     plateToContains: [],
+    edgePlateIds: [],
+    colorByPlate: [],
+    edgePlateObject: {},
+    edgeCellObject: {},
+    chanceOfWater: 70,
     bbox: {
         xl: 0,
         xr: 800,
         yt: 0,
         yb: 600
     },
-    numberOfPlates: 14,
+    numberOfPlates: 12,
     plateRootIds: [],
     sites: [],
     numberOfIterations: 2,
@@ -28,52 +34,114 @@ var MapProc = {
         }
         this.treemap = this.buildTreemap();
         this.assignPlates();
+        this.assignPlatePoliticalColors();
+        this.assignEdgePlates();
+        this.assignWater();
         
         // Toggle goes here.
         // this.renderVoronoiView();
-        this.renderPlateView();
+        // this.renderPlateView();
         // this.renderStainedGlassView();
+        this.renderPoliticalView();
+    },
+
+    assignWater: function() {
+        for( var plateCounter = 0; plateCounter < this.edgePlateIds.length; plateCounter++ ) {
+            var waterRoll = this.randomIntegerInRange(0, 100);
+            if(waterRoll < this.chanceOfWater)
+            {
+                var plateId = this.edgePlateIds[plateCounter];
+                var cellsInPlate = this.plateToContains[plateId];
+                for( var cellCounter =0; cellCounter < cellsInPlate.length; cellCounter++ ) {
+                    var cellId = cellsInPlate[cellCounter];
+                    var cell = this.getCellForId(cellId);
+                    cell.water = true;
+                }
+            }
+        }
+    },
+
+    assignEdgePlates: function() {
+        var edgeCellIds = Object.keys(this.edgeCellObject);
+        for( var i = 0; i < edgeCellIds.length; i++ ) {
+            var cell = this.getCellForId(edgeCellIds[i]);
+
+            this.edgePlateObject[cell.plate] = 1;
+        }
+        this.edgePlateIds = Object.keys(this.edgePlateObject);
     },
 
     renderVoronoiView: function() {
         this.renderMapBorder();
-        Voronoi.prototype.Cell.prototype.cellColor='#ffffff';
-        Voronoi.prototype.Cell.prototype.edgeColor='#333';
-        Voronoi.prototype.Cell.prototype.siteColor='#ff0000';
+        this.setCellColors('#ffffff', '#333', '#ff0000');
         this.renderAllCells();
+    },
+
+    assignPlatePoliticalColors: function() {
+        for(var plateNumber = 0; plateNumber < this.numberOfPlates; plateNumber++) {
+            this.colorByPlate[plateNumber] = this.randomHexColor();
+        }
     },
 
     renderPlateView: function() {
         this.renderMapBorder();
-        Voronoi.prototype.Cell.prototype.cellColor='#ffffff';
-        Voronoi.prototype.Cell.prototype.edgeColor='#333';
-        Voronoi.prototype.Cell.prototype.siteColor='#ff0000';
-
-        var colorByPlate = [];
-
-        for(var plateNumber = 0; plateNumber < this.numberOfPlates; plateNumber++) {
-            colorByPlate[plateNumber] = this.randomHexColor();
-        }
+        this.setCellColors('#ffffff', '#333', '#ff0000');
 
         for(var cellId=0; cellId < this.getCellCount(); cellId++ ) {
             var cell = this.getCellForId( cellId );
             if( cell != null && cell.plate != null ) {
-                cell.cellColor = colorByPlate[cell.plate];
+                cell.cellColor = this.colorByPlate[cell.plate];
+                cell.siteColor = this.colorByPlate[cell.plate];
             }
         }
         this.renderAllCells();
     },
 
+    renderPoliticalView: function() {
+        this.renderMapBorder();
+        this.setCellColors(null, '#333', null);
+
+        for(var cellId=0; cellId < this.getCellCount(); cellId++ ) {
+            var cell = this.getCellForId( cellId );
+            if( cell != null && cell.plate != null ) {
+                cell.cellColor = this.colorByPlate[cell.plate];
+                cell.siteColor = this.colorByPlate[cell.plate];
+                if(cell.water == true)
+                {
+                    cell.cellColor = "#0000ff";
+                    cell.siteColor = "#0000ff";
+                }
+            }
+        }
+        this.renderAllCells();
+    },
+
+    setCellColors: function(cellColor, edgeColor, siteColor) {
+        var cells = this.diagram.cells;
+        for ( i in cells) {
+            var cell = cells[i];
+            if(cellColor != null) {
+                cell.cellColor = cellColor;
+            }
+            if(edgeColor != null) {
+                cell.edgeColor = edgeColor;
+            }
+            if(siteColor != null) {
+                cell.siteColor = siteColor;
+            }
+        }
+    },
+
+
     renderStainedGlassView: function() {
         this.renderMapBorder();
-        Voronoi.prototype.Cell.prototype.edgeColor='#333';
+        this.setCellColors(null, '#333', null);
         for(var cellId=0; cellId < this.getCellCount(); cellId++ ) {
             var cell = this.getCellForId( cellId );
             if( cell != null ) {
                 var color = this.randomHexColor();
                 cell.cellColor = color;
                 cell.siteColor = color;
-                Voronoi.prototype.Cell.prototype.siteColor
             }
         }
         this.renderAllCells();
@@ -87,18 +155,14 @@ var MapProc = {
 
     assignPlates: function() {
         this.plateRootIds = this.selectPlateStartingCellIds();
-        console.log("selected Plate root ids = " + this.plateRootIds);
         // Timeslice between multi-site random flood-fill.
         // Store nodes that might be valid expansion points here.
-        console.log("Sanity node count is " + this.getCellCount());
         var plateToValidAdjacent = [];
         // while(this.hasNodesNotAssignedToPlates()) {
             var cellsAssigned = 0;
             while(cellsAssigned < this.getCellCount())
             {
-                console.log("starting cell assigned loop.." + cellsAssigned);
                 for(var plateNumber=0; plateNumber < this.plateRootIds.length; plateNumber++) {
-                    console.log("starting plateNumber loop.." + cellsAssigned);
                    // Unsure datastore is initialized.
                    if(plateToValidAdjacent[plateNumber] == null) {
                         plateToValidAdjacent[plateNumber] = [];
@@ -116,17 +180,11 @@ var MapProc = {
                         cellsAssigned++;
                         this.plateToContains[plateNumber].push(cellId);
                         plateToValidAdjacent[plateNumber] = this.findAdjacentCells(cellId);
-                        console.log("setting plate start node for " + plateNumber);
-                        console.log("root is " + cellId);
-                        console.log("plate " + plateNumber + " now contains " + this.plateToContains[plateNumber]);
-                        console.log("plate " + plateNumber + " is adjacent to " + plateToValidAdjacent[plateNumber]);
-                        console.log("done setting plate start node for " + plateNumber);
                         continue;
                    }
 
                    if(plateToValidAdjacent[plateNumber].length == 0)
                    {
-                        console.log("plate is done growing - " + plateNumber);
                         // this plate is done growing
                         continue;
                    }
@@ -135,41 +193,18 @@ var MapProc = {
                    var cellIdToTry = plateToValidAdjacent[plateNumber][cellArrayIndexToTry];
                    var cellId = cellIdToTry;
                    var cell = this.getCellForId(cellId);
-                   console.log("Decided to try " + cellId);
-                   console.log("cell is here " + cell);
                    if(cell.plate == null) {
-                        console.log("this cell had no plate so we set his plate now.");
                         cell.plate = plateNumber;
                         cellsAssigned++;
-                        console.log("cell plate = " + cell.plate);
-
-
                         this.plateToContains[plateNumber].push(cellId);
-                        console.log("plate " + plateNumber + " now contains " + this.plateToContains[plateNumber]);
                         var adjacents = this.findAdjacentCells(cellId);
-                        console.log("Valid adjacents for plateNumber " + plateNumber + " premerge = " + plateToValidAdjacent[plateNumber]);
-                        console.log("Nodes adjacent to cell: " + cellId + " include " + adjacents);
                         plateToValidAdjacent[plateNumber] = this.mergeArray(plateToValidAdjacent[plateNumber], adjacents);
                         
-                        console.log("post plate adjacency merge plate " + plateNumber + "is adjacent to " + plateToValidAdjacent[plateNumber]);
-
-
-                        console.log("Now we remove the contents of the plate " + plateNumber + " from the nodes adjacent to the plate");
-                        console.log("premerge plate contents = " + this.plateToContains[plateNumber]);
-                        console.log("premerge plate adjacents = "+ plateToValidAdjacent[plateNumber]);
-
                         for (value in this.plateToContains[plateNumber]) {
                             plateToValidAdjacent[plateNumber] = plateToValidAdjacent[plateNumber].filter(function(element){
                                 return element !== value;
                             }); // ensure no adjacent plates have already been added.
                         }
-                        console.log("postmerge plate contents = " + this.plateToContains[plateNumber]);
-                        console.log("postmerge plate adjacents = "+ plateToValidAdjacent[plateNumber]);
-                        console.log("done with plate " + plateNumber + " for now");
-                        console.log(" XXXXXXXXXXXXXXXXXXXXXXX");
-                   }
-                   else {
-                        console.log("ALREADY had a plate! going to next node!");
                    }
                 }
             }
@@ -222,8 +257,14 @@ var MapProc = {
             if(lSite != null && lSite.voronoiId != cellId) {
                 adjacents.push(lSite.voronoiId);
             }
+            else if(lSite == null) {
+                this.edgeCellObject[cellId] = 1;
+            }
             if(rSite != null && rSite.voronoiId != cellId) {
                 adjacents.push(rSite.voronoiId);
+            }
+            else if(rSite == null) {
+                this.edgeCellObject[cellId] = 1;
             }
         }
         return adjacents;
@@ -245,7 +286,6 @@ var MapProc = {
 
     selectPlateStartingCellIds: function() {
     	var arr = [];
-        console.log("Selecting starting plates...");
     	var i=0;
     	while(i < this.numberOfPlates) {
     		var randomNumber = this.randomIntegerInRange(0,this.getCellCount() - 1);
@@ -255,8 +295,6 @@ var MapProc = {
 	    		i++;
 	    	}
 	    }
-        console.log("number of plates returned = " + arr.length);
-        console.log("number of plates requested = " + this.numberOfPlates);
 	    return arr;
     },
 
@@ -266,7 +304,13 @@ var MapProc = {
     },
 
     randomHexColor: function() {
-        return "#" + Math.floor((Math.abs(Math.sin(this.randomIntegerInRange(0,this.numberOfPlates - 1 * 40)) * 16777215)) % 16777215).toString(16);
+        var proposedHex = "#" + Math.floor((Math.abs(Math.sin(this.randomIntegerInRange(0,this.numberOfPlates - 1 * 40)) * 16777215)) % 16777215).toString(16);
+        var missingChars = 7 - proposedHex.length;
+        for ( var i = 0; i < missingChars; i++ ) {
+            proposedHex += "0";
+        }
+
+        return proposedHex;
     },
 
     clearSites: function() {
@@ -427,19 +471,12 @@ var MapProc = {
         y -= canvas.offsetTop;
         cellid = this.cellIdFromPoint(x, y);
 
-        if (this.lastCellId !== cellid) {
-            if (this.lastCellId !== undefined) {
-                var lastCell = this.getCellForId(this.lastCellId);
-                this.renderCell(this.lastCellId);
-            }
-            if (cellid !== undefined) {
-                var cell = this.getCellForId(cellid);
-                this.renderCellWithColor(cellid, this.hoverColor, cell.edgeColor, cell.siteColor);
-            }
-            this.lastCellId = cellid;
+        var str = "(" + x + "," + y + ") = " + cellid + "-- ";
+        if(cellid != null)
+        {
+            str += this.getCellForId(cellid).plate;
         }
-
-        document.getElementById('voronoiCellId').innerHTML = "(" + x + "," + y + ") = " + cellid + "-- " + this.getCellForId(cellid).plate;
+        document.getElementById('voronoiCellId').innerHTML = str;
     },
 
     cellIdFromPoint: function(x, y) {
@@ -467,36 +504,28 @@ var MapProc = {
     },
 
     renderCell: function(id) {
-        console.log("renderCell " + id);
         if (id === undefined) {
-            console.log("1")
             return;
         }
         if (!this.diagram) {
-            console.log("2")
             return;
         }
         var cell = this.getCellForId(id);
         if (!cell) {
-            console.log("3")
             return;
         }
         this.renderCellWithColor(id, cell.cellColor, cell.edgeColor, cell.siteColor);
     },
 
     renderCellWithColor: function(id, cellColor, edgeColor, siteColor) {
-        console.log("renderCellWithColor " + id + " " + cellColor + " " + edgeColor + " " + siteColor);
         if (id === undefined) {
-            console.log("4")
             return;
         }
         if (!this.diagram) {
-            console.log("5")
             return;
         }
         var cell = this.getCellForId(id);
         if (!cell) {
-            console.log("6")
             return;
         }
         var drawingContext = this.canvas.getContext('2d');
