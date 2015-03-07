@@ -4,19 +4,21 @@ var MapProc = {
     margin: 0.0,
     canvas: null,
     numberOfNodes: 1000,
+    cellsForPlate: [],
+    plateToContains: [],
     bbox: {
         xl: 0,
         xr: 800,
         yt: 0,
         yb: 600
     },
-    numberOfPlates: 14,
+    numberOfPlates: 10,
     plateRootIds: [],
     sites: [],
     numberOfIterations: 2,
     showPlates: true,
     treemap: null,
-    hoverColor: '#f00000',
+    hoverColor: '#00ffff',
 
     init: function() {
         this.canvas = document.getElementById('voronoiCanvas');
@@ -30,6 +32,7 @@ var MapProc = {
         // Toggle goes here.
         // this.renderVoronoiView();
         this.renderPlateView();
+        // this.renderStainedGlassView();
     },
 
     renderVoronoiView: function() {
@@ -46,10 +49,37 @@ var MapProc = {
         Voronoi.prototype.Cell.prototype.edgeColor='#333';
         Voronoi.prototype.Cell.prototype.siteColor='#ff0000';
 
-        for(var i=0; i<this.numberOfPlates; i++) {
-             var cellId = this.plateRootIds[i];
-             var cell = this.diagram.cells[cellId];
-             cell.cellColor='#fff000';
+        var colorByPlate = [];
+
+        for(var plateNumber = 0; plateNumber < this.numberOfPlates; plateNumber++) {
+            colorByPlate[plateNumber] = this.randomHexColor();
+        }
+
+        for(var cellId=0; cellId < this.numberOfNodes; cellId++ ) {
+            var cell = this.getCellForId( cellId );
+            if(cell == null)
+            {
+                console.log("culprit");
+                console.log(cellId);
+            }
+            if( cell != null && cell.plate != null ) {
+                cell.cellColor = colorByPlate[cell.plate];
+            }
+        }
+        this.renderAllCells();
+    },
+
+    renderStainedGlassView: function() {
+        this.renderMapBorder();
+        Voronoi.prototype.Cell.prototype.edgeColor='#333';
+        for(var cellId=0; cellId < this.numberOfNodes; cellId++ ) {
+            var cell = this.getCellForId( cellId );
+            if( cell != null ) {
+                var color = this.randomHexColor();
+                cell.cellColor = color;
+                cell.siteColor = color;
+                Voronoi.prototype.Cell.prototype.siteColor
+            }
         }
         this.renderAllCells();
     },
@@ -62,28 +92,105 @@ var MapProc = {
 
     assignPlates: function() {
         this.plateRootIds = this.selectPlateStartingCellIds();
-        for(var plateNumber=0; plateNumber<this.plateRootIds.length; plateNumber++) {
-            var rootId = this.plateRootIds[plateNumber];
-            var cell = this.diagram.cells[rootId];
-            var halfEdges = cell.halfedges;
-            var adjacents = [];
-            for(var k=0; k < halfEdges.length; k++) {
-                var lSite = halfEdges[k].edge.lSite;
-                var rSite = halfEdges[k].edge.rSite;
-                if(lSite != null && lSite.voronoiId != rootId) {
-                    console.log("hit1");
-                    adjacents.push(lSite);
+        // Timeslice between multi-site random flood-fill.
+        // Store nodes that might be valid expansion points here.
+        var plateToValidAdjacent = [];
+        while(this.hasNodesNotAssignedToPlates()) {
+            for(var nodesAssigned = 0; nodesAssigned < this.numberOfNodes; nodesAssigned++ ) {
+                for(var plateNumber=0; plateNumber < this.plateRootIds.length; plateNumber++) {
+                   // Unsure datastore is initialized.
+                   if(plateToValidAdjacent[plateNumber] == null) {
+                        plateToValidAdjacent[plateNumber] = [];
+                        this.plateToContains[plateNumber] = [];
+                   }
+
+                   if(this.plateToContains[plateNumber].length == 0) {
+                        // Don't have a start node yet, get one
+                        var cellId = this.plateRootIds[plateNumber];
+                        this.getCellForId(cellId).plate = plateNumber;
+                        this.plateToContains[plateNumber].push(cellId);
+                        plateToValidAdjacent[plateNumber] = this.findAdjacentCells(cellId);
+                   }
+
+                   if(plateToValidAdjacent[plateNumber].length == 0)
+                   {
+                        // this plate is done growing
+                        continue;
+                   }
+
+                   var cellArrayIndexToTry = this.randomIntegerInRange(0, plateToValidAdjacent[plateNumber].length - 1);
+                   var cellIdToTry = plateToValidAdjacent[plateNumber][cellArrayIndexToTry];
+                   var cellId = cellIdToTry;
+                   var cell = this.getCellForId(cellId);
+
+                   if(cell.plate == null) {
+                        cell.plate = plateNumber;
+                        this.plateToContains[plateNumber].push(cellId);
+                        plateToValidAdjacent[plateNumber] = this.mergeArray(plateToValidAdjacent[plateNumber], this.findAdjacentCells(cellId));
+                        
+                        for (value in this.plateToContains[plateNumber]) {
+                            plateToValidAdjacent[plateNumber] = plateToValidAdjacent[plateNumber].filter(function(element){
+                                return element !== value;
+                            }); // ensure no adjacent plates have already been added.
+                        }
+                   }
                 }
-                if(rSite != null && rSite.voronoiId != rootId) {
-                    console.log("hit2");
-                    adjacents.push(rSite);
-                }
-            }
-            console.log("Adjacents for: " + rootId);
-            for(var i=0; i < adjacents.length; i++) {
-                console.log(adjacents[i].voronoiId);
             }
         }
+    },
+
+    hasNodesNotAssignedToPlates: function() {
+        var cells = this.diagram.cells;
+        for(x in cells) {
+            if(cells[x].plate == null)
+            {
+                return true;
+            }
+        }
+
+    },
+
+    // merge two arrays purging duplicates, 
+    // this is lazy, no shame.
+    mergeArray: function(a, b) {
+
+        var x = {};
+        var res = [];
+
+        for (i in a) {
+            x[a[i]] = 1;
+            res.push(a[i]);
+        }
+
+        for (k in b) {
+            if(x[b[k]] == null)
+            {
+                res.push(b[k]);
+                x[b[k]] = 1;
+            }
+        }
+        return res;
+    },
+
+    getCellForId: function(cellId) {
+        return this.diagram.cells[cellId];
+    },
+
+    findAdjacentCells: function(cellId) {
+        var cell = this.getCellForId(cellId);
+        var halfEdges = cell.halfedges;
+        var adjacents = [];
+        for(var k=0; k < halfEdges.length; k++) {
+            var lSite = halfEdges[k].edge.lSite;
+            var rSite = halfEdges[k].edge.rSite;
+            if(lSite != null && lSite.voronoiId != cellId) {
+                adjacents.push(lSite.voronoiId);
+            }
+            if(rSite != null && rSite.voronoiId != cellId) {
+                adjacents.push(rSite.voronoiId);
+            }
+        }
+        return adjacents;
     },
 
     compute: function(sites) {
@@ -104,7 +211,7 @@ var MapProc = {
     	var arr = [];
     	var i=0;
     	while(i < this.numberOfPlates) {
-    		var randomNumber = Math.floor(Math.random() * this.numberOfNodes);
+    		var randomNumber = this.randomIntegerInRange(0,this.numberOfNodes - 1);
 	    	if(!this.inArray(arr, randomNumber))
 	    	{
 	    		arr.push(randomNumber);
@@ -112,6 +219,15 @@ var MapProc = {
 	    	}
 	    }
 	    return arr;
+    },
+
+    // Returns a random integer between min (inclusive) and max (inclusive)
+    randomIntegerInRange: function(min, max) {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+    },
+
+    randomHexColor: function() {
+        return "#" + Math.floor((Math.abs(Math.sin(this.randomIntegerInRange(0,this.numberOfPlates - 1 * 40)) * 16777215)) % 16777215).toString(16);
     },
 
     clearSites: function() {
@@ -270,17 +386,17 @@ var MapProc = {
 
         if (this.lastCellId !== cellid) {
             if (this.lastCellId !== undefined) {
-                var lastCell = this.diagram.cells[this.lastCellId];
+                var lastCell = this.getCellForId(this.lastCellId);
                 this.renderCell(this.lastCellId);
             }
             if (cellid !== undefined) {
-                var cell = this.diagram.cells[cellid];
+                var cell = this.getCellForId(cellid);
                 this.renderCellWithColor(cellid, this.hoverColor, cell.edgeColor, cell.siteColor);
             }
             this.lastCellId = cellid;
         }
 
-        document.getElementById('voronoiCellId').innerHTML = "(" + x + "," + y + ") = " + cellid;
+        document.getElementById('voronoiCellId').innerHTML = "(" + x + "," + y + ") = " + cellid + "-- " + this.getCellForId(cellid).plate;
     },
 
     cellIdFromPoint: function(x, y) {
@@ -314,7 +430,7 @@ var MapProc = {
         if (!this.diagram) {
             return;
         }
-        var cell = this.diagram.cells[id];
+        var cell = this.getCellForId(id);
         if (!cell) {
             return;
         }
@@ -328,7 +444,7 @@ var MapProc = {
         if (!this.diagram) {
             return;
         }
-        var cell = this.diagram.cells[id];
+        var cell = this.getCellForId(id);
         if (!cell) {
             return;
         }
