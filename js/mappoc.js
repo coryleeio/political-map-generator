@@ -4,7 +4,6 @@ var Map = {
     margin: 0.0,
     canvas: null,
     numberOfSites: 1000,
-    zoneIsWater: {},
     zoneToContains: [],
     edgeZoneIds: [],
     colorByZone: [],
@@ -20,12 +19,13 @@ var Map = {
     },
     numberOfZones: 12,
     sites: [],
-    numberOfIterations: 2,
+    consistency: 2,
     treemap: null,
     hoverColor: '#00ffff',
 
-    init: function() {
-        this.zoneIsWater = {};
+    generate: function() {
+        // Guarantee starting state, since cells are re-used by the voronoi library.
+        // and map object can be re-used via GUI.
         this.zoneToContains = [];
         this.edgeZoneIds = [];
         this.colorByZone = [];
@@ -33,36 +33,40 @@ var Map = {
         this.edgeCellObject = {};
         this.renderOnlyPolticalBounds = false;
         this.sites = [];
+        Voronoi.prototype.Cell.prototype.water=null;
+        Voronoi.prototype.Cell.prototype.plate=null;
 
-        console.log("1");
+        if(this.diagram!= null && this.diagram.cells != null) {
+            var cells = this.diagram.cells;
+            for (i in this.diagram.cells) {
+                var cell = cells[i];
+                cell.water=null;
+                cell.zone=null;
+                var halfEdges = cell.halfedges;
+                for(y in halfEdges) {
+                    var halfEdge = halfEdges[y];
+                    halfEdge.politicalBound = null;
+                }
+            }
+        }
 
         this.canvas = document.getElementById('voronoiCanvas');
-         console.log("1");
         this.randomSites(this.numberOfSites, true);
-         console.log("1");
-        for (var i = 0; i < this.numberOfIterations; i++) {
+        for (var i = 0; i < this.consistency; i++) {
             this.relaxSites();
         }
-         console.log("1");
         this.treemap = this.buildTreemap();
-         console.log("1");
         this.assignZones();
-         console.log("1");
         this.assignZonePoliticalColors();
-         console.log("1");
         this.assignEdgeZones();
-         console.log("1");
         this.assignWater();
-         console.log("1");
         this.assignPoliticalEdges();
-         console.log("1");
-        
-        // Toggle goes here.
-        // this.renderVoronoiView();
-        // this.renderZoneView();
-        // this.renderStainedGlassView();
         this.renderPoliticalView();
-         console.log("1");
+    },
+
+    saveAsImage: function() {
+        var image = this.canvas.toDataURL("image/png").replace("image/png", "image/octet-stream");  // here is the most important part because if you dont replace you will get a DOM 18 exception.
+        window.location.href=image; // it will save locally
     },
 
     assignWater: function() {
@@ -219,20 +223,16 @@ var Map = {
         var zoneToValidAdjacent = [];
         // while(this.zone()) {
             var cellsAssigned = 0;
-            console.log(this.getCellCount());
             while(cellsAssigned < this.getCellCount())
             {
-                console.log("hit");
                 for(var zoneNumber=0; zoneNumber < zoneRootIds.length; zoneNumber++) {
-                   // Unsure datastore is initialized.
+                   // Unsure datastore is generateialized.
                    if(zoneToValidAdjacent[zoneNumber] == null) {
-                        console.log(2);
                         zoneToValidAdjacent[zoneNumber] = [];
                    }
 
                    if(this.zoneToContains[zoneNumber] == null)
                    {
-                        console.log(2);
                         this.zoneToContains[zoneNumber] = [];
                    }
 
@@ -243,17 +243,14 @@ var Map = {
                         cellsAssigned++;
                         this.zoneToContains[zoneNumber].push(cellId);
                         zoneToValidAdjacent[zoneNumber] = this.findAdjacentCells(cellId);
-                        console.log(2);
                         continue;
                    }
 
                    if(zoneToValidAdjacent[zoneNumber].length == 0)
                    {
-                        console.log(2);
                         // this zone is done growing
                         continue;
                    }
-                   console.log(2);
                    var cellArrayIndexToTry = this.randomIntegerInRange(0, zoneToValidAdjacent[zoneNumber].length - 1);
                    var cellIdToTry = zoneToValidAdjacent[zoneNumber][cellArrayIndexToTry];
                    var cellId = cellIdToTry;
@@ -266,7 +263,6 @@ var Map = {
                         zoneToValidAdjacent[zoneNumber] = this.mergeArray(zoneToValidAdjacent[zoneNumber], adjacents);
                         
                         for (value in this.zoneToContains[zoneNumber]) {
-                            console.log(2);
                             zoneToValidAdjacent[zoneNumber] = zoneToValidAdjacent[zoneNumber].filter(function(element){
                                 return element !== value;
                             }); // ensure no adjacent zone have already been added.
@@ -344,24 +340,24 @@ var Map = {
     },
 
     inArray: function(array, value) {
-	    for (var i = 0; i < array.length; i++) {
-	        if (array[i] == value) return true;
-	    }
-	    return false;
-	},
+        for (var i = 0; i < array.length; i++) {
+            if (array[i] == value) return true;
+        }
+        return false;
+    },
 
     selectZoneStartingCellIds: function() {
-    	var arr = [];
-    	var i=0;
-    	while(i < this.numberOfZones) {
-    		var randomNumber = this.randomIntegerInRange(0,this.getCellCount() - 1);
-	    	if(!this.inArray(arr, randomNumber))
-	    	{
-	    		arr.push(randomNumber);
-	    		i++;
-	    	}
-	    }
-	    return arr;
+        var arr = [];
+        var i=0;
+        while(i < this.numberOfZones) {
+            var randomNumber = this.randomIntegerInRange(0,this.getCellCount() - 1);
+            if(!this.inArray(arr, randomNumber))
+            {
+                arr.push(randomNumber);
+                i++;
+            }
+        }
+        return arr;
     },
 
     // Returns a random integer between min (inclusive) and max (inclusive)
@@ -681,19 +677,20 @@ var Map = {
 
 window.onload = function() {
   var map = Map;
-  map.init();
+  map.generate();
   var gui = new dat.GUI();
-  gui.add(map, 'numberOfSites', 1000, 4000);
-  // chanceOfWater
-  // numberOfZones
-  // numberOfIterations
-
-
-  gui.add(map, 'clearSites');
-  gui.add(map, 'init');
-  gui.add(map, 'renderVoronoiView');
-  gui.add(map, 'renderVoronoiView');
-  gui.add(map, 'renderStainedGlassView');
-  gui.add(map, 'renderZoneView');
-  gui.add(map, 'renderPoliticalView');
+  gui.add(map, 'numberOfSites', 15, 4000);
+  gui.add(map, 'chanceOfWater', 0, 100);
+  gui.add(map, 'numberOfZones', 4, 14);
+  gui.add(map, 'consistency', 0, 30);
+  gui.add(map, 'generate');
+  gui.add(map, 'saveImage');
+  var viewFolder = gui.addFolder('Alternate Views');
+  viewFolder.add(map, 'renderVoronoiView');
+  viewFolder.add(map, 'renderStainedGlassView');
+  viewFolder.add(map, 'renderZoneView');
+  viewFolder.add(map, 'renderPoliticalView');
+  viewFolder.open();
 };
+
+window.onmousemove=Map.cellUnderMouse(event);
