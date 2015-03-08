@@ -12,6 +12,7 @@ var MapProc = {
     edgePlateObject: {},
     edgeCellObject: {},
     chanceOfWater: 70,
+    renderOnlyPolticalBounds: false,
     bbox: {
         xl: 0,
         xr: 800,
@@ -37,6 +38,7 @@ var MapProc = {
         this.assignPlatePoliticalColors();
         this.assignEdgePlates();
         this.assignWater();
+        this.assignPoliticalEdges();
         
         // Toggle goes here.
         // this.renderVoronoiView();
@@ -61,6 +63,38 @@ var MapProc = {
         }
     },
 
+    assignPoliticalEdges: function() {
+        var cells = this.diagram.cells;
+
+        var comparePlatesAndAssignPoliticalBounds = function( halfedge, cell, adjacentCell) {
+            if(cell.plate != adjacentCell.plate && !(cell.water == true && adjacentCell.water == true)) {
+                halfedge.politicalBound=true;
+            }else {
+                halfedge.politicalBound=false;
+            }
+        }
+
+        for ( i in cells ) {
+            var cell = cells[i];
+            var cellId = cells[i].voronoiId;
+            var halfEdges = cell.halfedges;
+
+            for(var k=0; k < halfEdges.length; k++) {
+                var lSite = halfEdges[k].edge.lSite;
+                var rSite = halfEdges[k].edge.rSite;
+                if(lSite != null && lSite.voronoiId != cellId) {
+                    var adjacentCell = this.getCellForId(lSite.voronoiId);
+                    comparePlatesAndAssignPoliticalBounds(halfEdges[k], cell, adjacentCell);
+                }
+
+                if(rSite != null && rSite.voronoiId != cellId) {
+                    var adjacentCell = this.getCellForId(rSite.voronoiId);
+                    comparePlatesAndAssignPoliticalBounds(halfEdges[k], cell, adjacentCell);
+                }
+            }
+        }
+    },
+
     assignEdgePlates: function() {
         var edgeCellIds = Object.keys(this.edgeCellObject);
         for( var i = 0; i < edgeCellIds.length; i++ ) {
@@ -72,6 +106,7 @@ var MapProc = {
     },
 
     renderVoronoiView: function() {
+        this.renderOnlyPolticalBounds = false;
         this.renderMapBorder();
         this.setCellColors('#ffffff', '#333', '#ff0000');
         this.renderAllCells();
@@ -86,6 +121,7 @@ var MapProc = {
     renderPlateView: function() {
         this.renderMapBorder();
         this.setCellColors('#ffffff', '#333', '#ff0000');
+        this.renderOnlyPolticalBounds = false;
 
         for(var cellId=0; cellId < this.getCellCount(); cellId++ ) {
             var cell = this.getCellForId( cellId );
@@ -100,6 +136,7 @@ var MapProc = {
     renderPoliticalView: function() {
         this.renderMapBorder();
         this.setCellColors(null, '#333', null);
+        this.renderOnlyPolticalBounds = true;
 
         for(var cellId=0; cellId < this.getCellCount(); cellId++ ) {
             var cell = this.getCellForId( cellId );
@@ -108,8 +145,8 @@ var MapProc = {
                 cell.siteColor = this.colorByPlate[cell.plate];
                 if(cell.water == true)
                 {
-                    cell.cellColor = "#0000ff";
-                    cell.siteColor = "#0000ff";
+                    cell.cellColor = "#91D0EF";
+                    cell.siteColor = "#91D0EF";
                 }
             }
         }
@@ -135,6 +172,7 @@ var MapProc = {
 
     renderStainedGlassView: function() {
         this.renderMapBorder();
+        this.renderOnlyPolticalBounds = false;
         this.setCellColors(null, '#333', null);
         for(var cellId=0; cellId < this.getCellCount(); cellId++ ) {
             var cell = this.getCellForId( cellId );
@@ -150,6 +188,9 @@ var MapProc = {
     renderAllCells: function() {
         for (var i =0; i<this.getCellCount(); i++) {
             this.renderCell(i);
+        }
+        for (var i =0; i<this.getCellCount(); i++) {
+            this.renderEdges(i);
         }
     },
 
@@ -517,6 +558,51 @@ var MapProc = {
         this.renderCellWithColor(id, cell.cellColor, cell.edgeColor, cell.siteColor);
     },
 
+    renderEdges: function(id){
+        if (id === undefined) {
+            return;
+        }
+        if (!this.diagram) {
+            return;
+        }
+        var cell = this.getCellForId(id);
+        if (!cell) {
+            return;
+        }
+        var drawingContext = this.canvas.getContext('2d');
+        drawingContext.globalAlpha = 1;
+        var halfedges = cell.halfedges;
+        var nHalfedges = halfedges.length;
+
+
+        // Cell outline for political bounds
+        for (var iHalfedge = 0; iHalfedge < nHalfedges; iHalfedge++) {
+            var halfedge = halfedges[iHalfedge];
+            var start = halfedges[iHalfedge].getStartpoint();
+            var end = halfedges[iHalfedge].getEndpoint();
+            if(this.renderOnlyPolticalBounds == true) {
+                if(halfedge.politicalBound) {
+                    drawingContext.beginPath();
+                    drawingContext.moveTo(start.x, start.y);
+                    drawingContext.lineTo(end.x, end.y);
+                    drawingContext.strokeStyle = cell.edgeColor;
+                    drawingContext.fillStyle = cell.edgeColor;
+                    drawingContext.lineWidth=2;
+                    drawingContext.stroke();
+                }
+            }
+            else if(this.renderOnlyPolticalBounds == false)
+            {
+                drawingContext.beginPath();
+                drawingContext.moveTo(start.x, start.y);
+                drawingContext.lineTo(end.x, end.y);
+                drawingContext.strokeStyle = cell.edgeColor;
+                drawingContext.lineWidth=1;
+                drawingContext.stroke();
+            }
+        }
+    },
+
     renderCellWithColor: function(id, cellColor, edgeColor, siteColor) {
         if (id === undefined) {
             return;
@@ -532,18 +618,21 @@ var MapProc = {
         drawingContext.globalAlpha = 1;
         // edges
         drawingContext.beginPath();
-        var halfedges = cell.halfedges,
-            nHalfedges = halfedges.length,
-            v = halfedges[0].getStartpoint();
+        var halfedges = cell.halfedges;
+        var nHalfedges = halfedges.length;
+        var v = halfedges[0].getStartpoint();
+
+        // cell body
         drawingContext.moveTo(v.x, v.y);
         for (var iHalfedge = 0; iHalfedge < nHalfedges; iHalfedge++) {
             v = halfedges[iHalfedge].getEndpoint();
             drawingContext.lineTo(v.x, v.y);
         }
+        drawingContext.strokeStyle = cellColor;
         drawingContext.fillStyle = cellColor;
-        drawingContext.strokeStyle = edgeColor;
         drawingContext.fill();
         drawingContext.stroke();
+        
         // site
         v = cell.site;
         drawingContext.fillStyle = siteColor;
