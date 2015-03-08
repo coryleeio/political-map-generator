@@ -1,6 +1,6 @@
-Proof of concept for a javascript map generator.
+Proof of concept for a javascript political map generator.
 
-Big thanks to [Amit Patel] http://www-cs-students.stanford.edu/~amitp/game-programming/polygon-map-generation/ at red blob games for his great article on polygonal map generation that inspired me to take on the project.
+Big thanks to [Amit Patel](http://www-cs-students.stanford.edu/~amitp/game-programming/polygon-map-generation/) at red blob games for his great article on polygonal map generation that inspired me to take on the project.
 
 and to [Andy Gainey](http://experilous.com/1/blog/post/procedural-planet-generation) for the details of his map generator's use of techtonic plates in his planet generation demo:
 

@@ -7,8 +7,9 @@
     <script src="js/quadtree.js"></script>
     <script src="js/rhill-voronoi-core.js"></script>
     <script src="js/mappoc.js"></script>
+    <script src="js/dat.gui.min.js"></script>
   </head>
-  <body onload="MapProc.init();" onmousemove="MapProc.cellUnderMouse(event);">
+  <body onmousemove="Map.cellUnderMouse(event);">
       <div id="voronoiCellId"></div>
     	<canvas width="800" height="600" id="voronoiCanvas"></canvas>
   </body>
