@@ -166,10 +166,32 @@ var Map = {
                 cell.siteColor = this.colorByZone[cell.zone];
                 if(cell.water == true)
                 {
-
                     cell.cellColor = "#91D0EF";
                     cell.siteColor = "#91D0EF";
-                    cell.edgeColor = "#91D0EF";
+                    cell.edgeColor = null;
+                }
+            }
+        }
+        this.renderAllCells();
+    },
+
+    renderGriddedView: function() {
+        this.renderMapBorder();
+        this.setCellColors('#ffffff', '#333', '#ff0000');
+        this.renderOnlyPolticalBounds = false;
+
+        for(var cellId=0; cellId < this.getCellCount(); cellId++ ) {
+            var cell = this.getCellForId( cellId );
+            if( cell != null && cell.zone != null ) {
+                if(cell.water == true)
+                {
+                    cell.cellColor = "#91D0EF";
+                    cell.siteColor = "#91D0EF";
+                }
+                else
+                {
+                    cell.cellColor = this.colorByZone[cell.zone];
+                    cell.siteColor = this.colorByZone[cell.zone];
                 }
             }
         }
@@ -611,6 +633,10 @@ var Map = {
         if (!cell) {
             return;
         }
+
+        if(cell.edgeColor == null) {
+            return;
+        }
         var drawingContext = this.canvas.getContext('2d');
         drawingContext.globalAlpha = 1;
         var halfedges = cell.halfedges;
@@ -710,8 +736,9 @@ window.onload = function() {
   viewFolder.add(map, 'renderVoronoiView');
   viewFolder.add(map, 'renderStainedGlassView');
   viewFolder.add(map, 'renderZoneView');
-  viewFolder.add(map, 'renderPoliticalView');
+  viewFolder.add(map, 'renderGriddedView');
   viewFolder.add(map, 'renderGriddedPoliticalView');
+  viewFolder.add(map, 'renderPoliticalView');
   viewFolder.open();
 };
 
