@@ -154,6 +154,27 @@ var Map = {
         }
         this.renderAllCells();
     },
+    renderGriddedPoliticalView: function() {
+        this.renderMapBorder();
+        this.setCellColors(null, '#333', null);
+        this.renderOnlyPolticalBounds = false;
+
+        for(var cellId=0; cellId < this.getCellCount(); cellId++ ) {
+            var cell = this.getCellForId( cellId );
+            if( cell != null && cell.zone != null ) {
+                cell.cellColor = this.colorByZone[cell.zone];
+                cell.siteColor = this.colorByZone[cell.zone];
+                if(cell.water == true)
+                {
+
+                    cell.cellColor = "#91D0EF";
+                    cell.siteColor = "#91D0EF";
+                    cell.edgeColor = "#91D0EF";
+                }
+            }
+        }
+        this.renderAllCells();
+    },
 
     renderPoliticalView: function() {
         this.renderMapBorder();
@@ -690,6 +711,7 @@ window.onload = function() {
   viewFolder.add(map, 'renderStainedGlassView');
   viewFolder.add(map, 'renderZoneView');
   viewFolder.add(map, 'renderPoliticalView');
+  viewFolder.add(map, 'renderGriddedPoliticalView');
   viewFolder.open();
 };
 
