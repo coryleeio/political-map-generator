@@ -2,8 +2,10 @@ var Map = {
     voronoi: new Voronoi(),
     diagram: null,
     margin: 0.0,
+    xsize: 1000,
+    ysize: 800,
     canvas: null,
-    numberOfSites: 1000,
+    numberOfSites: 1500,
     zoneToContains: [],
     edgeZoneIds: [],
     colorByZone: [],
@@ -13,11 +15,11 @@ var Map = {
     renderOnlyPolticalBounds: false,
     bbox: {
         xl: 0,
-        xr: 800,
+        xr: 1000,
         yt: 0,
-        yb: 600
+        yb: 800
     },
-    numberOfZones: 12,
+    numberOfZones: 24,
     sites: [],
     consistency: 2,
     treemap: null,
@@ -26,6 +28,13 @@ var Map = {
     generate: function() {
         // Guarantee starting state, since cells are re-used by the voronoi library.
         // and map object can be re-used via GUI.
+        var mapframe = document.getElementById('voronoiCanvas');
+        Map.bbox.xr = Map.xsize;
+        Map.bbox.yb = Map.ysize;
+        mapframe.setAttribute("width", Map.xsize);
+        mapframe.setAttribute("height", Map.ysize);
+
+
         this.zoneToContains = [];
         this.edgeZoneIds = [];
         this.colorByZone = [];
@@ -725,13 +734,17 @@ var Map = {
 window.onload = function() {
   var map = Map;
   map.generate();
+
+
   var gui = new dat.GUI();
-  gui.add(map, 'numberOfSites', 15, 4000);
+  gui.add(map, 'numberOfSites', 15, 8000);
   gui.add(map, 'chanceOfWater', 0, 100);
-  gui.add(map, 'numberOfZones', 4, 14);
+  gui.add(map, 'numberOfZones', 4, 200);
   gui.add(map, 'consistency', 0, 30);
   gui.add(map, 'generate');
   gui.add(map, 'saveImage');
+  gui.add(map, 'xsize',300,1920);
+  gui.add(map, 'ysize',600,1080);
   var viewFolder = gui.addFolder('Alternate Views');
   viewFolder.add(map, 'renderVoronoiView');
   viewFolder.add(map, 'renderStainedGlassView');
