@@ -755,4 +755,4 @@ window.onload = function() {
   viewFolder.open();
 };
 
-window.onmousemove=Map.cellUnderMouse(event);
+window.onmousemove=Map.cellUnderMouse.bind(Map);
