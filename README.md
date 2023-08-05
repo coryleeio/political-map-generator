@@ -1,4 +1,6 @@
-Proof of concept for a javascript political map generator.
+Javascript political map generator
+
+[Try it out here](https://coryleeio.github.io/political-map-generator/)
 
 Big thanks to [Amit Patel](http://www-cs-students.stanford.edu/~amitp/game-programming/polygon-map-generation/) at red blob games for his great article on polygonal map generation that inspired me to take on the project.
 
