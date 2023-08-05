@@ -1,4 +1,4 @@
-Javascript political map generator
+Political map generator implemented in vanilla javascript
 
 [Try it out here](https://coryleeio.github.io/political-map-generator/)
 
